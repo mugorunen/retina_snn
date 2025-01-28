@@ -278,7 +278,7 @@ class EventSlicesToMap:
                 ev_map = tof.to_voxel_grid_numpy(event_slice, self.sensor_size, self.n_time_bins)
             elif self.map_type == 'binary':
                 ev_map = tof.to_frame_numpy(event_slice, self.sensor_size, n_time_bins=self.n_time_bins)
-                #ev_map = tof.to_bina_rep_numpy(ev_map, n_frames=1, n_bits=self.n_time_bins)
+                ev_map = tof.to_bina_rep_numpy(ev_map, n_frames=1, n_bits=self.n_time_bins)
             elif self.map_type == 'frame':
                 ev_map = tof.to_frame_numpy(event_slice, self.sensor_size, n_time_bins=self.n_time_bins)
             
@@ -291,7 +291,7 @@ class EventSlicesToMap:
             #        std_c = ev_map[c][non_zero_entries[c]].std()
 #
             #        ev_map[c][non_zero_entries[c]] = (ev_map[c][non_zero_entries[c]] - mean_c) / (std_c + 1e-10)
-            ev_map[ev_map != 0] = 1
+            #ev_map[ev_map != 0] = 1
             ev_maps.append(ev_map)
 
         return np.array(ev_maps).astype(np.float32)

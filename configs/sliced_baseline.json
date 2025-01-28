@@ -7,7 +7,7 @@
     "model": "CNN_GRU_base",
     "lr": 0.0001,
     "num_epochs": 1000,
-    "batch_size": 16,
+    "batch_size": 2,
     "spatial_factor": 0.125,
     "temporal_subsample_factor": 0.2,
     "val_interval": 2,

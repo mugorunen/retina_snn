@@ -62,7 +62,7 @@ def launch_fire(
     train_ann_to_snn=False,
     train_with_mem=False,
     num_epochs=1,
-    batch_size=16,
+    batch_size=2,
     # training_params - optimization
     optimizer="Adam",
     reset_states_sinabs=True,
@@ -298,7 +298,7 @@ def launch_fire(
     if arch_name == "retina":
         model.spiking_model(
             torch.ones(
-                training_params["batch_size"] * dataset_params["num_bins"], *input_shape
+                training_params["batch_size"] * dataset_params["num_bins"] * 16, *input_shape
             ).to(torch.device(device))
         )
     trainer = Trainer(model, train_loader, val_loader)

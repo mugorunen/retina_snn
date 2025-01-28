@@ -9,6 +9,8 @@ import random
 import numpy as np
 from tqdm import tqdm
 from sinabs import SNNAnalyzer
+from snntorch import spikegen
+from training.models.retina import Retina
 from figures.plot_animation import (
     plot_animation_points,
     plot_animation_boxes,
@@ -168,11 +170,11 @@ class Trainer:
 
     def apply_lpf(self, outputs):
         outputs = self.model_lpf(
-            outputs.reshape(self.batch_size, self.output_dim, self.num_bins)
+            outputs.reshape(self.batch_size*16, self.output_dim, self.num_bins)
         )
         new_shape = outputs.shape[-1]
         outputs = outputs.permute(0, 2, 1)
-        return outputs.reshape(self.batch_size * new_shape, self.output_dim)
+        return outputs.reshape(self.batch_size * new_shape*16, self.output_dim)
 
     def clip_weights(self):
         def clip_fn(module, min_value, max_value):
@@ -207,6 +209,25 @@ class Trainer:
                 # Reshaping for Sinabs
                 b, t, c, h, w = data.shape
 
+                spike_data = spikegen.rate(data, num_steps=16) #16x16x30x2x60x80
+                # Transpose dimensions to bring num_time_bins before num_time_steps
+                spike_data_transposed = spike_data.permute(1, 2, 0, 3, 4, 5)  # Shape: batch_size x num_time_bins x num_time_steps x polarity x height x width
+
+                # Reshape to merge num_time_steps and num_time_bins
+                spike_tensor = spike_data_transposed.reshape(
+                    spike_data.size(1),  # batch_size
+                    -1,                  # num_time_bins * num_time_steps
+                    spike_data.size(3),  # polarity
+                    spike_data.size(4),  # height
+                    spike_data.size(5)   # width
+                )  # Final Shape: batch_size x (num_time_steps * num_time_bins) x polarity x height x width
+
+
+                labels_repeated = labels.unsqueeze(2).repeat(1, 1, 16, 1)
+                labels_repeated = labels_repeated.view(b, -1, 4)
+
+
+
                 if b!= self.batch_size:
                     continue
 
@@ -218,7 +239,8 @@ class Trainer:
                 spike_out = 0
 
                 if self.train_with_sinabs:
-                    data = data.reshape(b * t, c, h, w)
+                    data = spike_tensor.reshape(b * t * 16, c, h, w)
+                    #data = data.reshape(b * t, c, h, w)
                     outputs = self.model.spiking_model(data)
                     spike_out = outputs.sum().item() / (self.batch_size + self.num_bins)
                     wandb.log({"model_stats/spike_out": spike_out})
@@ -252,7 +274,8 @@ class Trainer:
                     outputs = self.apply_lpf(outputs.clone())
 
                 # Error
-                self.compute_loss(outputs, labels[:, :, :2])
+                self.compute_loss(outputs, labels_repeated[:, :, :2])
+                #self.compute_loss(outputs, labels)
 
                 # Logging
                 stuff_to_log = ["lr", "loss", "performance", "stats"]
@@ -278,7 +301,7 @@ class Trainer:
                 #self.clip_weights()
 
                 # Eval One or Full
-                if steps % 256 == 0 and steps != 0:
+                if steps % 400 == 0 and steps != 0:
                     self.scheduler.step()
                 steps += 1
 
@@ -309,11 +332,31 @@ class Trainer:
                 labels = labels.float().to(self.device)
                 b, t, c, h, w = data.shape
 
+                spike_data = spikegen.rate(data, num_steps=16) #16x16x30x2x60x80
+                # Transpose dimensions to bring num_time_bins before num_time_steps
+                spike_data_transposed = spike_data.permute(1, 2, 0, 3, 4, 5)  # Shape: batch_size x num_time_bins x num_time_steps x polarity x height x width
+
+                # Reshape to merge num_time_steps and num_time_bins
+                spike_tensor = spike_data_transposed.reshape(
+                    spike_data.size(1),  # batch_size
+                    -1,                  # num_time_bins * num_time_steps
+                    spike_data.size(3),  # polarity
+                    spike_data.size(4),  # height
+                    spike_data.size(5)   # width
+                )  # Final Shape: batch_size x (num_time_steps * num_time_bins) x polarity x height x width
+
+                labels_repeated = labels.unsqueeze(2).repeat(1, 1, 16, 1)
+                labels_repeated = labels_repeated.view(b, -1, 4)
+
+                
+
                 if b != self.batch_size:
                     continue
 
+                # Evaluating
+                # pdb.set_trace()
                 if self.train_with_sinabs:
-                    data = data.reshape(b * t, c, h, w)
+                    data = spike_tensor.reshape(b * t * 16, c, h, w)
                     outputs = self.model.spiking_model(data)
                 else:
                     outputs = self.model(data)
@@ -325,7 +368,8 @@ class Trainer:
                     outputs = self.apply_lpf(outputs)
 
                 # Error
-                self.compute_loss(outputs, labels[:, :, :2])
+                self.compute_loss(outputs, labels_repeated[:, :, :2])
+                #self.compute_loss(outputs, labels)
                 self.spike_loss, spikes = 0, 0
 
                 if self.yolo_loss:

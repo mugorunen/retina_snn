@@ -15,7 +15,7 @@ class Retina(nn.Module):
         self.train_with_exodus = training_params["train_with_exodus"]
 
         # data configs
-        self.num_bins = dataset_params["num_bins"]
+        self.num_bins = dataset_params["num_bins"]*16
         self.input_channel = dataset_params["input_channel"]
         self.img_width = dataset_params["img_width"]
         self.img_height = dataset_params["img_height"]
