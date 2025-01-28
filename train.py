@@ -26,8 +26,8 @@ def launch_fire(
     arch_name="retina", # ["retina", "3et"]
     dataset_name="ini-30", # ["ini-30", "synthetic"]
     run_name=None,
-    output_dir="/home/muhammed/Desktop/retina/outputs/",
-    data_dir="/home/muhammed/Desktop/retina/datasets/evs_ini30",
+    output_dir="/home/muhammed/Desktop/retina_snn/outputs/",
+    data_dir="/home/muhammed/Desktop/retina_snn/datasets/evs_ini30",
     path_to_run=None,
     verify_hardware_compatibility=False,
     # dataset_params
