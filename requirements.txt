@@ -8,7 +8,8 @@ torchvision
 tonic 
 sinabs 
 sinabs-dynapcnn
-dv-processing 
+#dv-processing 
 thop 
 onnx
 tables  
+snntorch
