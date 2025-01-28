@@ -21,15 +21,15 @@ from data.synthetic_dataset import get_synthetic_dataloader
 
 def launch_fire(
     # wandb/generic
-    wandb_mode="run",  # ["disabled", "run"]
+    wandb_mode="disabled",  # ["disabled", "run"]
     project_name="event_eye_tracking",
     arch_name="retina", # ["retina", "3et"]
     dataset_name="ini-30", # ["ini-30", "synthetic"]
     run_name=None,
-    output_dir="/datasets/pbonazzi/retina/output/",
-    data_dir="/datasets/pbonazzi/evs_eyetracking/evs_ini30",
+    output_dir="/home/muhammed/Desktop/retina/outputs/",
+    data_dir="/home/muhammed/Desktop/retina/datasets/evs_ini30",
     path_to_run=None,
-    verify_hardware_compatibility=True,
+    verify_hardware_compatibility=False,
     # dataset_params
     val_idx=1, 
     input_channel=2,
@@ -81,13 +81,13 @@ def launch_fire(
     spike_surrogate=True,
     spike_window=0.5,
     # decimation_rate - Euclidian loss
-    euclidian_loss=False,
+    euclidian_loss=True,
     w_euclidian_loss=7.5,
     # training_params - Focal loss
     focal_loss=False,
     bbox_w=5,
     # training_params - Yolo loss
-    yolo_loss=True,
+    yolo_loss=False,
     num_classes=0,
     num_boxes=2,
     SxS_Grid=4,
@@ -254,8 +254,8 @@ def launch_fire(
     # Validate
     input_shape = (
         dataset_params["input_channel"],
-        dataset_params["img_width"],
         dataset_params["img_height"],
+        dataset_params["img_width"],
     )
 
     if verify_hardware_compatibility:

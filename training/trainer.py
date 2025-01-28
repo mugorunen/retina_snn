@@ -208,6 +208,9 @@ class Trainer:
                 # Reshaping for Sinabs
                 b, t, c, w, h = data.shape
 
+                if b != self.batch_size:
+                    continue
+
                 # Training
                 spike_out = 0
                 if self.train_with_sinabs:
@@ -300,6 +303,9 @@ class Trainer:
                 data = data.float().to(self.device)
                 labels = labels.float().to(self.device)
                 b, t, c, h, w = data.shape
+
+                if b != self.batch_size:
+                    continue
 
                 # Evaluating
                 if self.train_with_sinabs:
