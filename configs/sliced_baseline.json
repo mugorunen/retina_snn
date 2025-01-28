@@ -26,6 +26,6 @@
     "loss": "weighted_mse",
     "log_dir": "./logs",
     "checkpoint": "-",
-    "map_type": "binary",
+    "map_type": "frame",
     "dataset": "t"
 }
