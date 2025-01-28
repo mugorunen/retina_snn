@@ -16,26 +16,27 @@ from training.models.utils import (
 )
 
 from data.ini_30_module import get_ini_30_dataloader, get_indexes
+from data_3etplus.threeETplus_module import get_threeetplus_dataloader
 from data.synthetic_dataset import get_synthetic_dataloader
 
 
 def launch_fire(
     # wandb/generic
-    wandb_mode="run",  # ["disabled", "run"]
+    wandb_mode="disabled",  # ["disabled", "run"]
     project_name="event_eye_tracking",
     arch_name="retina", # ["retina", "3et"]
-    dataset_name="ini-30", # ["ini-30", "synthetic"]
+    dataset_name="threeETplus", # ["ini-30", "synthetic"]
     run_name=None,
-    output_dir="/datasets/pbonazzi/retina/output/",
-    data_dir="/datasets/pbonazzi/evs_eyetracking/evs_ini30",
+    output_dir="/home/muhammed/Desktop/retina_snn/outputs/",
+    data_dir="/home/muhammed/Desktop/retina_snn/datasets/evs_ini30",
     path_to_run=None,
-    verify_hardware_compatibility=True,
+    verify_hardware_compatibility=False,
     # dataset_params
     val_idx=1, 
     input_channel=2,
-    img_width=64,
-    img_height=64,
-    num_bins=40,
+    img_width=80,
+    img_height=60,
+    num_bins=30,
     # dataset_params - accumulation/slicing
     fixed_window=False,
     fixed_window_dt=2_500,  # us 
@@ -61,14 +62,14 @@ def launch_fire(
     train_ann_to_snn=False,
     train_with_mem=False,
     num_epochs=1,
-    batch_size=32,
+    batch_size=16,
     # training_params - optimization
     optimizer="Adam",
     reset_states_sinabs=True,
     scheduler="StepLR",
     # training_params - LPF layer
     train_with_lpf=True,
-    lpf_tau_mem_syn=(5.0, 5.0),  # (50, 50),
+    lpf_tau_mem_syn=(15, 15),  # (50, 50),
     lpf_kernel_size=30,  # 20
     lpf_init=0.01,
     lpf_train=True,
@@ -81,13 +82,13 @@ def launch_fire(
     spike_surrogate=True,
     spike_window=0.5,
     # decimation_rate - Euclidian loss
-    euclidian_loss=False,
+    euclidian_loss=True,
     w_euclidian_loss=7.5,
     # training_params - Focal loss
     focal_loss=False,
     bbox_w=5,
     # training_params - Yolo loss
-    yolo_loss=True,
+    yolo_loss=False,
     num_classes=0,
     num_boxes=2,
     SxS_Grid=4,
@@ -254,8 +255,8 @@ def launch_fire(
     # Validate
     input_shape = (
         dataset_params["input_channel"],
-        dataset_params["img_width"],
         dataset_params["img_height"],
+        dataset_params["img_width"],
     )
 
     if verify_hardware_compatibility:
@@ -282,6 +283,8 @@ def launch_fire(
             training_params=training_params,
             shuffle=False,
         )
+    elif dataset_name == "threeETplus":
+        train_loader, val_loader = get_threeetplus_dataloader(device=torch.device(device))
     else:
         train_loader, val_loader = get_synthetic_dataloader(dataset_params, training_params)
 
@@ -301,7 +304,7 @@ def launch_fire(
     trainer = Trainer(model, train_loader, val_loader)
     trainer.set_parameters(training_params, dataset_params)
     if path_to_run != None:
-        trainer.load(path_to_run)
+        trainer.load(os.path.join(path_to_run, "models/saved_model_step_791.pt"))
     trainer.set_loss(training_params, dataset_params)
     trainer.train()
 

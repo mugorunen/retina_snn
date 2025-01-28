@@ -194,31 +194,37 @@ class Trainer:
         for epoch in epoch_bar:
             iter_bar = tqdm(self.train_loader, desc="Iteration Loop")
 
-            for batch, (data, labels, avg_dt) in enumerate(iter_bar):
+            for batch, (data, labels) in enumerate(iter_bar):
                 # Model Prep
                 self.model.train()
-                if self.train_with_lpf:
-                    self.model_lpf.train()
-                self.reset_grad_step()
+                
 
                 # Data Prep
                 data = data.float().to(self.device)
                 labels = labels.float().to(self.device)
 
+                
                 # Reshaping for Sinabs
-                b, t, c, w, h = data.shape
+                b, t, c, h, w = data.shape
+
+                if b!= self.batch_size:
+                    continue
+
+                if self.train_with_lpf:
+                    self.model_lpf.train()
+                self.reset_grad_step()
 
                 # Training
                 spike_out = 0
+
                 if self.train_with_sinabs:
-                    data = data.reshape(b * t, c, w, h)
+                    data = data.reshape(b * t, c, h, w)
                     outputs = self.model.spiking_model(data)
                     spike_out = outputs.sum().item() / (self.batch_size + self.num_bins)
                     wandb.log({"model_stats/spike_out": spike_out})
                 else:
                     outputs = self.model(data)
-                    data = data.reshape(b * t, c, w, h)
-
+                    data = data.reshape(b * t, c, h, w)
                 self.spike_loss, spikes = 0, 0
 
                 if self.yolo_loss: 
@@ -246,7 +252,7 @@ class Trainer:
                     outputs = self.apply_lpf(outputs.clone())
 
                 # Error
-                self.compute_loss(outputs, labels)
+                self.compute_loss(outputs, labels[:, :, :2])
 
                 # Logging
                 stuff_to_log = ["lr", "loss", "performance", "stats"]
@@ -259,7 +265,8 @@ class Trainer:
                 )
                 iter_bar.set_postfix(
                     distance=self.distance.item(),
-                    dt=round(torch.mean(avg_dt.float()).item(), 0),
+                    #dt=round(torch.mean(avg_dt.float()).item(), 0),
+                    dt=50,
                     events=round(data.sum(-1).sum(-1).sum(-1).mean().item(), 0),
                     spikes=spike_out,
                 )
@@ -274,6 +281,7 @@ class Trainer:
                 if steps % 256 == 0 and steps != 0:
                     self.scheduler.step()
                 steps += 1
+
             self.eval(epoch, steps)
 
     def eval(self, epoch, train_steps=0):
@@ -293,7 +301,7 @@ class Trainer:
         evs_min, evs_max = float("inf"), -float("inf")
         hist_dt, hist_evs = [], []
 
-        for batch, (data, labels, avg_dt) in enumerate(iter_bar):
+        for batch, (data, labels) in enumerate(iter_bar):
             self.reset_grad_step()
             # Data Prep
             with torch.no_grad():
@@ -301,13 +309,15 @@ class Trainer:
                 labels = labels.float().to(self.device)
                 b, t, c, h, w = data.shape
 
-                # Evaluating
+                if b != self.batch_size:
+                    continue
+
                 if self.train_with_sinabs:
-                    data = data.reshape(b * t, c, w, h)
+                    data = data.reshape(b * t, c, h, w)
                     outputs = self.model.spiking_model(data)
                 else:
                     outputs = self.model(data)
-                    data = data.reshape(b * t, c, w, h)
+                    data = data.reshape(b * t, c, h, w)
 
                 if self.train_with_mem:
                     outputs = self.model.spiking_model[-1].recordings["v_mem"]
@@ -315,7 +325,7 @@ class Trainer:
                     outputs = self.apply_lpf(outputs)
 
                 # Error
-                self.compute_loss(outputs, labels)
+                self.compute_loss(outputs, labels[:, :, :2])
                 self.spike_loss, spikes = 0, 0
 
                 if self.yolo_loss:
@@ -344,7 +354,7 @@ class Trainer:
             self.log_stuff("val", data, epoch, batch, spikes, stuff_to_log=stuff_to_log)
             distances += self.distance
             histogram_plot_distances.append(self.distance.item())
-
+            avg_dt = torch.tensor([1.2, 2.5, 3.7])
             hist_dt = [*hist_dt, *avg_dt.tolist()]
             hist_evs = [*hist_evs, *data.sum(-1).sum(-1).sum(-1).tolist()]
 
